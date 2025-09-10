@@ -171,7 +171,6 @@ exports.getOngoingOrders = async (req, res) => {
   }
 };
 
-
 // Get driver's current orders
 exports.getCurrentOrders = async (req, res) => {
   try {

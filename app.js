@@ -16,6 +16,7 @@ const io = new Server(server, {
 });
 
 const userMap = new Map();
+const driverMap = new Map();
 
 // Jab client connect karega
 io.on("connection", (socket) => {
@@ -37,6 +38,23 @@ io.on("connection", (socket) => {
       });[]
     }
   });
+
+   socket.on("driverjoin", (data) => {
+    console.log("📩 Data received:", data);
+    if (data?.userId) {
+      driverMap.set(data.userId, socket.id);
+      console.log(`📝 driver ${data.userId} mapped to socket ${socket.id}`);
+    }
+     const targetSocketId = driverMap.get("1234");
+    if (targetSocketId) {
+      io.to(targetSocketId).emit("message", {
+        from: socket.id,
+        latitude:79908,
+        longitude:90909
+      });[]
+    }
+  });
+
   // baad me use krenge
     socket.on("sendToUser", ({ targetUserId, message }) => {
     const targetSocketId = userMap.get(1234);
@@ -50,6 +68,7 @@ io.on("connection", (socket) => {
       console.log(`⚠️ User ${targetUserId} not connected`);
     }
   });
+
   // Disconnect event
   socket.on("disconnect", () => {
     console.log("❌ User disconnected:", socket.id);
