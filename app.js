@@ -7,10 +7,10 @@ const http = require('http');
 const app = express();
 const { Server } = require("socket.io");
 
-const server = http.createServer(app); // Express ko HTTP server banaya
+const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: "*", // React ya frontend URL daalna better hai e.g. "http://localhost:3000"
+    origin: "*",
     methods: ["GET", "POST"]
   }
 });
@@ -89,8 +89,6 @@ const adminOrderRoutes = require('./routes/admin/order');
 const adminDriverRoutes = require('./routes/admin/driver');
 
 
-
-
 // CORS middleware
 app.use((req, res, next) => {
   const allowedOrigins = [
@@ -98,8 +96,9 @@ app.use((req, res, next) => {
     "https://sheduled.vercel.app",
     "https://www.sheduled.com",
     "https://sheduled-admin-t4nj.vercel.app",
-    "https://www.admin.sheduled.com"
-  ];
+    "https://www.admin.sheduled.com",
+    "https://admin.sheduled.com"
+  ]
   const origin = req.headers.origin;
   if (allowedOrigins.includes(origin)) {
     res.setHeader("Access-Control-Allow-Origin", origin);
