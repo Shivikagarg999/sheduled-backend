@@ -98,6 +98,7 @@ app.use((req, res, next) => {
     "https://sheduled.vercel.app",
     "https://www.sheduled.com",
     "https://sheduled-admin-t4nj.vercel.app",
+    "https://www.admin.sheduled.com"
   ];
   const origin = req.headers.origin;
   if (allowedOrigins.includes(origin)) {
