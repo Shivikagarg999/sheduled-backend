@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const withdrawalController = require('../controllers/withdraw/withdraw');
 const auth = require('../middleware/driverAuth');
+const adminAuth = require('../middleware/adminAuth');
 
 // Bank details routes
 router.put('/bank-details', auth, withdrawalController.updateBankDetails);

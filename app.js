@@ -6,6 +6,8 @@ const cors = require('cors');
 const http = require('http');
 const app = express();
 const { Server } = require("socket.io");
+const Order = require("./models/order");
+
 
 const server = http.createServer(app);
 const io = new Server(server, {
@@ -20,6 +22,7 @@ const driverMap = new Map();
 
 // Jab client connect karega
 io.on("connection", (socket) => {
+  
   console.log("✅ User connected:", socket.id);
 
   // Client se event listen
@@ -40,9 +43,10 @@ io.on("connection", (socket) => {
   });
 
    socket.on("driverjoin", (data) => {
-    console.log("📩 Data received:", data);
+    console.log("📩 driver joined:", data);
     if (data?.userId) {
       driverMap.set(data.userId, socket.id);
+      console.log(driverMap)
       console.log(`📝 driver ${data.userId} mapped to socket ${socket.id}`);
     }
      const targetSocketId = driverMap.get("1234");
@@ -52,6 +56,39 @@ io.on("connection", (socket) => {
         latitude:79908,
         longitude:90909
       });[]
+    }
+  });
+
+   socket.on("tracknum", async (data) => {
+    try {
+      console.log("📩 Data received:", data);
+
+      // tracking number frontend se
+      const trackingNumber = data.trackingnum;
+
+      // order dhundo aur driver populate karo
+      const order = await Order.findOne({ trackingNumber })
+        .populate("driver", "_id name phone vehicleNumber"); // sirf driver ke fields lao
+      if (!order) {
+        socket.emit("tracknum-response", { error: "Order not found" });
+        return;
+      }
+      console.log("✅ Driver found:", order.driver?._id);
+      console.log(driverMap)
+      // driver details bhej do
+      socket.emit("driverdata", {
+        trackingNumber: order.trackingNumber,
+        driverId: order.driver?._id || null,
+        driverDetails: order.driverDetails || order.driver || null,
+        status: order.status,
+        latitude: "12456",
+        longitude:"09890"
+      });
+
+      console.log("✅ Driver ID found:", order.driver);
+    } catch (err) {
+      console.error("❌ Error fetching order:", err);
+      socket.emit("tracknum-response", { error: "Server error" });
     }
   });
 

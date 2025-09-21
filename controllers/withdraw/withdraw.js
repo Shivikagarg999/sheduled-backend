@@ -276,7 +276,7 @@ exports.updateWithdrawalStatus = async (req, res) => {
   try {
     const { id } = req.params;
     const { status, notes } = req.body;
-    const adminId = req.user.id; // Assuming admin authentication
+    const adminId = req.user.id; 
 
     const withdrawal = await Withdrawal.findById(id)
       .populate('driver')
