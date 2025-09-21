@@ -27,7 +27,7 @@ io.on("connection", (socket) => {
 
   // Client se event listen
   socket.on("join", (data) => {
-    console.log("📩 Data received:", data);
+    console.log("📩 Data received in join socket.on:", data);
     if (data?.userId) {
       userMap.set(data.userId, socket.id);
       console.log(`📝 User ${data.userId} mapped to socket ${socket.id}`);
