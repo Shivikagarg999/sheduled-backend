@@ -15,8 +15,8 @@ const io = new Server(server, {
   }
 });
 
-const userMap = new Map();   // customers
-const driverMap = new Map(); // drivers
+const userMap = new Map();
+const driverMap = new Map();
 
 // 🚀 Socket.io setup
 io.on("connection", (socket) => {
@@ -68,18 +68,26 @@ io.on("connection", (socket) => {
     }
   });
 
-  // 📌 Driver live location update
-  socket.on("driverLocationUpdate", (data) => {
-    const { driverId, trackingNumber, latitude, longitude } = data;
-    console.log(`📍 Driver ${driverId} location: ${latitude}, ${longitude}`);
+ // driver live location update
+socket.on("driverLocationUpdate", async (data) => {
+  const { driverId, trackingNumber, latitude, longitude } = data;
+  console.log(`📍 Driver ${driverId} location: ${latitude}, ${longitude}`);
 
-    // customer ko forward karo (trackingNumber ko room jaisa use kar sakte ho)
-    io.emit(`driverLocation-${trackingNumber}`, {
-      driverId,
-      latitude,
-      longitude
-    });
+  // Update driver location in Order document
+  await Order.findOneAndUpdate(
+    { trackingNumber },
+    { 
+      deliveryBoyLocation: { type: "Point", coordinates: [longitude, latitude], updatedAt: new Date() } 
+    }
+  );
+
+  // Emit to all clients who are tracking this order
+  io.emit(`driverLocation-${trackingNumber}`, {
+    driverId,
+    latitude,
+    longitude
   });
+});
 
   // 📌 Message example
   socket.on("sendToUser", ({ targetUserId, message }) => {
