@@ -15,84 +15,75 @@ const io = new Server(server, {
   }
 });
 
-const userMap = new Map();
-const driverMap = new Map();
+const userMap = new Map();   // customers
+const driverMap = new Map(); // drivers
 
-// Jab client connect karega
+// 🚀 Socket.io setup
 io.on("connection", (socket) => {
-  
   console.log("✅ User connected:", socket.id);
 
-  // Client se event listen
+  // 📌 Normal user join
   socket.on("join", (data) => {
-    console.log("📩 Data received in join socket.on:", data);
+    console.log("📩 Data received in join:", data);
     if (data?.userId) {
       userMap.set(data.userId, socket.id);
       console.log(`📝 User ${data.userId} mapped to socket ${socket.id}`);
     }
-     const targetSocketId = userMap.get("1234");
-    if (targetSocketId) {
-      io.to(targetSocketId).emit("message", {
-        from: socket.id,
-        latitude:79908,
-        longitude:90909
-      });[]
-    }
   });
 
-   socket.on("driverjoin", (data) => {
-    console.log("📩 driver joined:", data);
+  // 📌 Driver join
+  socket.on("driverjoin", (data) => {
+    console.log("📩 Driver joined:", data);
     if (data?.userId) {
       driverMap.set(data.userId, socket.id);
-      console.log(driverMap)
-      console.log(`📝 driver ${data.userId} mapped to socket ${socket.id}`);
-    }
-     const targetSocketId = driverMap.get("1234");
-    if (targetSocketId) {
-      io.to(targetSocketId).emit("message", {
-        from: socket.id,
-        latitude:79908,
-        longitude:90909
-      });[]
+      console.log(`📝 Driver ${data.userId} mapped to socket ${socket.id}`);
     }
   });
 
-   socket.on("tracknum", async (data) => {
+  // 📌 Tracking number se driver details fetch
+  socket.on("tracknum", async (data) => {
     try {
-      console.log("📩 Data received:", data);
-
-      // tracking number frontend se
+      console.log("📩 Tracking request:", data);
       const trackingNumber = data.trackingnum;
 
-      // order dhundo aur driver populate karo
       const order = await Order.findOne({ trackingNumber })
-        .populate("driver", "_id name phone vehicleNumber"); // sirf driver ke fields lao
+        .populate("driver", "_id name phone vehicleNumber");
+
       if (!order) {
         socket.emit("tracknum-response", { error: "Order not found" });
         return;
       }
+
       console.log("✅ Driver found:", order.driver?._id);
-      console.log(driverMap)
-      // driver details bhej do
+
       socket.emit("driverdata", {
         trackingNumber: order.trackingNumber,
         driverId: order.driver?._id || null,
-        driverDetails: order.driverDetails || order.driver || null,
+        driverDetails: order.driver || null,
         status: order.status,
-        latitude: "12456",
-        longitude:"09890"
       });
-
-      console.log("✅ Driver ID found:", order.driver);
     } catch (err) {
       console.error("❌ Error fetching order:", err);
       socket.emit("tracknum-response", { error: "Server error" });
     }
   });
 
-  // baad me use krenge
-    socket.on("sendToUser", ({ targetUserId, message }) => {
-    const targetSocketId = userMap.get(1234);
+  // 📌 Driver live location update
+  socket.on("driverLocationUpdate", (data) => {
+    const { driverId, trackingNumber, latitude, longitude } = data;
+    console.log(`📍 Driver ${driverId} location: ${latitude}, ${longitude}`);
+
+    // customer ko forward karo (trackingNumber ko room jaisa use kar sakte ho)
+    io.emit(`driverLocation-${trackingNumber}`, {
+      driverId,
+      latitude,
+      longitude
+    });
+  });
+
+  // 📌 Message example
+  socket.on("sendToUser", ({ targetUserId, message }) => {
+    const targetSocketId = userMap.get(targetUserId);
     if (targetSocketId) {
       io.to(targetSocketId).emit("message", {
         from: socket.id,
@@ -104,13 +95,13 @@ io.on("connection", (socket) => {
     }
   });
 
-  // Disconnect event
+  // 📌 Disconnect
   socket.on("disconnect", () => {
     console.log("❌ User disconnected:", socket.id);
   });
 });
 
-// Import routes
+// ------------------- Routes & Middleware -------------------
 const orderRoutes = require('./routes/orderRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
 const userRoutes = require('./routes/userRoutes');
@@ -123,7 +114,6 @@ const adminUserRoutes = require('./routes/admin/user');
 const adminOrderRoutes = require('./routes/admin/order');
 const adminDriverRoutes = require('./routes/admin/driver');
 
-
 // CORS middleware
 app.use((req, res, next) => {
   const allowedOrigins = [
@@ -133,7 +123,7 @@ app.use((req, res, next) => {
     "https://sheduled-admin-t4nj.vercel.app",
     "https://www.admin.sheduled.com",
     "https://admin.sheduled.com"
-  ]
+  ];
   const origin = req.headers.origin;
   if (allowedOrigins.includes(origin)) {
     res.setHeader("Access-Control-Allow-Origin", origin);
@@ -149,7 +139,12 @@ app.use((req, res, next) => {
 });
 
 app.use(cors({
-  origin: ['http://localhost:3000', 'https://sheduled.vercel.app', 'https://www.sheduled.com', "https://sheduled-admin-t4nj.vercel.app"],
+  origin: [
+    'http://localhost:3000',
+    'https://sheduled.vercel.app',
+    'https://www.sheduled.com',
+    "https://sheduled-admin-t4nj.vercel.app"
+  ],
   credentials: true,
 }));
 
@@ -160,7 +155,7 @@ mongoose.connect(process.env.MONGO_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true
 })
-.then(() => console.log('✅ MongoDB connecteddddd'))
+.then(() => console.log('✅ MongoDB connected'))
 .catch(err => console.error('❌ Connection error:', err));
 
 // Test route
@@ -180,7 +175,6 @@ app.use('/api/admin', adminAuthRoutes);
 app.use('/api/admin/user', adminUserRoutes);
 app.use('/api/admin/order', adminOrderRoutes);
 app.use('/api/admin/driver', adminDriverRoutes);
-
 
 // Start server
 const PORT = process.env.PORT || 5000;
