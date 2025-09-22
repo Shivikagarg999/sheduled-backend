@@ -55,7 +55,7 @@ io.on("connection", (socket) => {
       }
 
       console.log("✅ Driver found:", order.driver?._id);
-
+       console.log(driverMap);
       socket.emit("driverdata", {
         trackingNumber: order.trackingNumber,
         driverId: order.driver?._id || null,
