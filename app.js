@@ -56,6 +56,17 @@ io.on("connection", (socket) => {
 
       console.log("✅ Driver found:", order.driver?._id);
        console.log(driverMap);
+         const driverSocketId = driverMap.get(order.driver?._id.toString());
+    if (driverSocketId) {
+      console.log(`📤 Sending sendLocation event to driver ${order.driver._id}`);
+      
+      io.to(driverSocketId).emit("sendLocation", {
+        trackingNumber: order.trackingNumber,
+        message: "Please send your live location",
+      });
+    } else {
+      console.warn(`⚠️ Driver ${order.driver._id} not connected`);
+    }
       socket.emit("driverdata", {
         trackingNumber: order.trackingNumber,
         driverId: order.driver?._id || null,
