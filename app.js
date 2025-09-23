@@ -40,11 +40,17 @@ io.on("connection", (socket) => {
     }
   });
 
-  // 📌 Tracking number se driver details fetch
+  // 📌 Tracking number to fetch driver details
   socket.on("tracknum", async (data) => {
     try {
       console.log("📩 Tracking request:", data);
       const trackingNumber = data.trackingnum;
+      const userId = data.userId;
+
+      if (!trackingNumber || !userId) {
+        socket.emit("tracknum-response", { error: "Missing tracking number or user ID" });
+        return;
+      }
 
       const order = await Order.findOne({ trackingNumber })
         .populate("driver", "_id name phone vehicleNumber");
@@ -55,67 +61,65 @@ io.on("connection", (socket) => {
       }
 
       console.log("✅ Driver found:", order.driver?._id);
-       console.log(driverMap);
-         const driverSocketId = driverMap.get(order.driver?._id.toString());
-    if (driverSocketId) {
-      console.log(`📤 Sending sendLocation event to driver ${order.driver._id}`);
-      
-      io.to(driverSocketId).emit("sendLocation", {
-        trackingNumber: order.trackingNumber,
-        message: "Please send your live location",
-      });
-    } else {
-      console.warn(`⚠️ Driver ${order.driver._id} not connected`);
-    }
-      socket.emit("driverdata", {
-        trackingNumber: order.trackingNumber,
-        driverId: order.driver?._id || null,
-        driverDetails: order.driver || null,
-        status: order.status,
-      });
+      const driverSocketId = driverMap.get(order.driver?._id.toString());
+
+      if (driverSocketId) {
+        console.log(`📤 Sending sendLocation event to driver ${order.driver._id}`);
+
+        // Emit location request to the driver along with tracking number
+        io.to(driverSocketId).emit("sendLocation", { userId, trackingNumber });
+      } else {
+        console.warn(`⚠️ Driver ${order.driver._id} not connected`);
+        socket.emit("tracknum-response", { error: "Driver not connected" });
+      }
     } catch (err) {
       console.error("❌ Error fetching order:", err);
       socket.emit("tracknum-response", { error: "Server error" });
     }
   });
 
- // driver live location update
-socket.on("driverLocationUpdate", async (data) => {
-  const { driverId, trackingNumber, latitude, longitude } = data;
-  console.log(`📍 Driver ${driverId} location: ${latitude}, ${longitude}`);
+  // 📌 Handle driver sending location (separate listener outside tracknum)
+  socket.on("myLocation", (data) => {
+    console.log("📩 Driver's location received:", data);
+    const { userId, trackingNumber, driverId, location } = data;
 
-  // Update driver location in Order document
-  await Order.findOneAndUpdate(
-    { trackingNumber },
-    { 
-      deliveryBoyLocation: { type: "Point", coordinates: [longitude, latitude], updatedAt: new Date() } 
+    // Validate data to ensure we have required information
+    if (!userId || !trackingNumber || !driverId || !location) {
+      console.warn("⚠️ Invalid location data received:", data);
+      return;
     }
-  );
 
-  // Emit to all clients who are tracking this order
-  io.emit(`driverLocation-${trackingNumber}`, {
-    driverId,
-    latitude,
-    longitude
-  });
-});
+    const userSocketId = userMap.get(userId);
 
-  // 📌 Message example
-  socket.on("sendToUser", ({ targetUserId, message }) => {
-    const targetSocketId = userMap.get(targetUserId);
-    if (targetSocketId) {
-      io.to(targetSocketId).emit("message", {
-        from: socket.id,
-        message,
+    if (userSocketId) {
+      console.log(`📤 Sending driver location to user ${userSocketId}`);
+      io.to(userSocketId).emit("driverdata", {
+        trackingNumber,
+        driverId,
+        location,
       });
-      console.log(`📤 Message sent to ${targetUserId}`);
     } else {
-      console.log(`⚠️ User ${targetUserId} not connected`);
+      console.warn(`⚠️ No user connected for userId: ${userId} and tracking number: ${trackingNumber}`);
     }
   });
 
-  // 📌 Disconnect
+  // 📌 Handle disconnects (cleanup maps)
   socket.on("disconnect", () => {
+    // Remove from userMap and driverMap on disconnect
+    userMap.forEach((value, key) => {
+      if (value === socket.id) {
+        userMap.delete(key);
+        console.log(`🗑️ User ${key} disconnected and removed from map`);
+      }
+    });
+
+    driverMap.forEach((value, key) => {
+      if (value === socket.id) {
+        driverMap.delete(key);
+        console.log(`🗑️ Driver ${key} disconnected and removed from map`);
+      }
+    });
+
     console.log("❌ User disconnected:", socket.id);
   });
 });
