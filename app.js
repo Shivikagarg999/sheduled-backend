@@ -78,30 +78,27 @@ io.on("connection", (socket) => {
     }
   });
 
-  // 📌 Handle driver sending location (separate listener outside tracknum)
-  socket.on("myLocation", (data) => {
-    console.log("📩 Driver's location received:", data);
-    const { userId, trackingNumber, driverId, location } = data;
-
-    // Validate data to ensure we have required information
-    if (!userId || !trackingNumber || !driverId || !location) {
-      console.warn("⚠️ Invalid location data received:", data);
-      return;
-    }
-
-    const userSocketId = userMap.get(userId);
-
-    if (userSocketId) {
-      console.log(`📤 Sending driver location to user ${userSocketId}`);
-      io.to(userSocketId).emit("driverdata", {
-        trackingNumber,
-        driverId,
-        location,
-      });
-    } else {
-      console.warn(`⚠️ No user connected for userId: ${userId} and tracking number: ${trackingNumber}`);
-    }
+ // 📌 Handle driver sending location
+socket.on("myLocation", (data) => {
+  console.log("📩 Driver's location received:", data);
+  const { driverId, trackingNumber, location } = data;
+  
+  // Validate required data
+  if (!driverId  !location) {
+    console.warn("⚠️ Invalid location data received:", data);
+    return;
+  }
+  
+  // Find users who might be tracking this order
+  userMap.forEach((userSocketId, userId) => {
+    console.log(📤 Broadcasting location to user ${userId});
+    io.to(userSocketId).emit("driverdata", {
+      trackingNumber,
+      driverId,
+      location,
+    });
   });
+});
 
   // 📌 Handle disconnects (cleanup maps)
   socket.on("disconnect", () => {
