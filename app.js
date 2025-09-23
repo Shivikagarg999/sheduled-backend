@@ -84,14 +84,14 @@ socket.on("myLocation", (data) => {
   const { driverId, trackingNumber, location } = data;
   
   // Validate required data
-  if (!driverId  !location) {
+  if (!driverId ||  !location) {
     console.warn("⚠️ Invalid location data received:", data);
     return;
   }
   
   // Find users who might be tracking this order
   userMap.forEach((userSocketId, userId) => {
-    console.log(📤 Broadcasting location to user ${userId});
+    console.log(` Broadcasting location to user ${userId}`);
     io.to(userSocketId).emit("driverdata", {
       trackingNumber,
       driverId,
