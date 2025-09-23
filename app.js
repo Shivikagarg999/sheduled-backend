@@ -45,10 +45,10 @@ io.on("connection", (socket) => {
     try {
       console.log("📩 Tracking request:", data);
       const trackingNumber = data.trackingnum;
-      const userId = data.userId;
+      const driverId = data.driverId;
 
-      if (!trackingNumber || !userId) {
-        socket.emit("tracknum-response", { error: "Missing tracking number or user ID" });
+      if (!trackingNumber || !driverId) {
+        socket.emit("tracknum-response", { error: "Missing tracking number or driver ID" });
         return;
       }
 
@@ -67,7 +67,7 @@ io.on("connection", (socket) => {
         console.log(`📤 Sending sendLocation event to driver ${order.driver._id}`);
 
         // Emit location request to the driver along with tracking number
-        io.to(driverSocketId).emit("sendLocation", { userId, trackingNumber });
+        io.to(driverSocketId).emit("sendLocation", { driverId, trackingNumber });
       } else {
         console.warn(`⚠️ Driver ${order.driver._id} not connected`);
         socket.emit("tracknum-response", { error: "Driver not connected" });
