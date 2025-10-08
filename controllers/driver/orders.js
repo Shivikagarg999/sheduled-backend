@@ -190,7 +190,7 @@ exports.getCurrentOrders = async (req, res) => {
 exports.getTransactionHistory = async (req, res) => {
   try {
     const driverId = req.driver.id;
-    const { page = 1, limit = 10 } = req.query;
+    const { page = 1, limit = 100 } = req.query;
 
     const transactions = await Transaction.find({ driver: driverId })
       .populate('order')
