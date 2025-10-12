@@ -2,7 +2,6 @@ const Driver = require("../../models/driver");
 const Order = require('../../models/order');
 const Transaction = require('../../models/transactions');
 
-// Get available orders for driver
 exports.getAvailableOrders = async (req, res) => {
   try {
     const driverId = req.driver?.id;
@@ -47,47 +46,45 @@ exports.getAvailableOrders = async (req, res) => {
   }
 };
 
-// Accept an order
 exports.acceptOrder = async (req, res) => {
   try {
     const { orderId } = req.body;
     const driverId = req.driver.id;
-    
+
     // Find the order and driver
     const order = await Order.findById(orderId);
     const driver = await Driver.findById(driverId);
-    
+
     if (!order || !driver) {
       return res.status(404).json({ message: 'Order or driver not found' });
     }
-    
+
     // Check if driver is available
     if (!driver.isAvailable) {
       return res.status(400).json({ message: 'Driver is not available' });
     }
-    
+
     // Check if order is already assigned
     if (order.driver) {
       return res.status(400).json({ message: 'Order already assigned to another driver' });
     }
-    
+
     // Update order status and assign driver
     order.driver = driverId;
     order.status = 'accepted';
     await order.save();
-    
+
     // Add order to driver's orders array
     driver.orders.push(orderId);
     driver.isAvailable = false; // Mark driver as busy
     await driver.save();
-    
+
     res.json({ message: 'Order accepted successfully', order });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
-// Mark order as delivered
 exports.markAsDelivered = async (req, res) => {
   try {
     const { orderId } = req.body;
@@ -108,34 +105,30 @@ exports.markAsDelivered = async (req, res) => {
       return res.status(400).json({ message: 'Order already marked as delivered' });
     }
 
-    // ✅ Mark delivered
     order.status = 'delivered';
     order.updatedAt = new Date();
     await order.save();
 
-    // ✅ Calculate 30% earnings
     const driverEarnings = (order.amount * 0.30).toFixed(2);
 
-    // ✅ Update driver's earnings
     driver.earnings = (
       parseFloat(driver.earnings || 0) + parseFloat(driverEarnings)
     ).toFixed(2);
     driver.isAvailable = true;
     await driver.save();
 
-   await Transaction.create({
-  driver: driver._id,
-  order: order._id, 
-  trackingNumber: order.trackingNumber, 
-  amount: driverEarnings
-});
+    await Transaction.create({
+      driver: driver._id,
+      order: order._id,
+      trackingNumber: order.trackingNumber,
+      amount: driverEarnings
+    });
 
-    // ✅ Send entire order in response
     res.json({
       message: 'Order marked as delivered successfully',
       earningsAdded: driverEarnings,
       totalEarnings: driver.earnings,
-      order, 
+      order,
     });
 
   } catch (error) {
@@ -158,7 +151,7 @@ exports.getOngoingOrders = async (req, res) => {
 
     // Modify amount to 30%
     const modifiedOrders = ongoingOrders.map(order => {
-      const orderObj = order.toObject(); 
+      const orderObj = order.toObject();
       if (orderObj.amount) {
         orderObj.amount = orderObj.amount * 0.3;
       }
@@ -171,16 +164,15 @@ exports.getOngoingOrders = async (req, res) => {
   }
 };
 
-// Get driver's current orders
 exports.getCurrentOrders = async (req, res) => {
   try {
     const driverId = req.driver.id;
-    
-    const orders = await Order.find({ 
-      driver: driverId, 
-      status: { $in: ['accepted', 'picked_up', 'in_transit'] } 
+
+    const orders = await Order.find({
+      driver: driverId,
+      status: { $in: ['accepted', 'picked_up', 'in_transit'] }
     }).populate('user', 'name phone');
-    
+
     res.json(orders);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -213,38 +205,65 @@ exports.getTransactionHistory = async (req, res) => {
   }
 };
 
-// Helper function to calculate driver earnings
+exports.saveDeliveryProof = async (req, res) => {
+  try {
+    const { orderId, deliveryNotes } = req.body;
+    const driverId = req.driver.id;
+    const deliveryProofImage = req.file ? req.file.path : '';
+
+    const order = await Order.findById(orderId);
+
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+
+    if (order.driver.toString() !== driverId) {
+      return res.status(403).json({ message: 'Driver not assigned to this order' });
+    }
+
+    order.deliveryNotes = deliveryNotes || order.deliveryNotes;
+    order.deliveryProofImage = deliveryProofImage || order.deliveryProofImage;
+    order.updatedAt = new Date();
+
+    await order.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Delivery proof saved successfully',
+      order,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
 function calculateDriverEarnings(orderAmount) {
-  // Implement your commission structure
-  // Example: Driver gets 70% of order amount
   const commissionRate = 0.7;
   return orderAmount * commissionRate;
 }
 
-// Helper function to credit earnings to wallet
 async function creditToWallet(driverId, amount, orderId) {
   try {
-    // Find or create wallet for driver
     let wallet = await Wallet.findOne({ driver: driverId });
-    
+
     if (!wallet) {
       wallet = new Wallet({
         driver: driverId,
         balance: 0
       });
     }
-    
-    // Add transaction and update balance
+
     wallet.transactions.push({
       amount,
       type: 'credit',
       description: `Earnings from order delivery`,
       order: orderId
     });
-    
+
     wallet.balance += amount;
     await wallet.save();
-    
+
     return wallet;
   } catch (error) {
     throw error;

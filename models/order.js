@@ -2,68 +2,66 @@
 const mongoose = require('mongoose');
 
 const orderSchema = new mongoose.Schema({
-  user: { 
-    type: mongoose.Schema.Types.ObjectId, 
-    ref: 'User', 
-    default: null 
+  user: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null
   },
-  
+
   pickupBuilding: { type: String, required: true },
   pickupApartment: { type: String, required: true },
   pickupEmirate: { type: String, required: true },
   pickupArea: { type: String, required: true },
-  
+
   dropBuilding: { type: String, required: true },
   dropApartment: { type: String, required: true },
   dropEmirate: { type: String, required: true },
   dropArea: { type: String, required: true },
-  
+
   pickupContact: { type: String, required: true },
   dropContact: { type: String, required: true },
-  
-  deliveryType: { 
-    type: String, 
-    enum: ['delivery', 'standard', 'express', 'next-day', 'return'], 
-    required: true 
+
+  deliveryType: {
+    type: String,
+    enum: ['delivery', 'standard', 'express', 'next-day', 'return'],
+    required: true
   },
-  returnType: { 
-    type: String, 
-    enum: ['no-return', 'with-return'], 
-    default: 'no-return' 
+  returnType: {
+    type: String,
+    enum: ['no-return', 'with-return'],
+    default: 'no-return'
   },
-  
-  paymentMethod: { 
-    type: String, 
+
+  paymentMethod: {
+    type: String,
     enum: ['card', 'cash'],
-    required: true 
+    required: true
   },
   amount: { type: Number, required: true },
-  paymentStatus: { 
-    type: String, 
-    enum: ['pending', 'completed', 'failed', 'refunded'], 
-    default: 'pending' 
+  paymentStatus: {
+    type: String,
+    enum: ['pending', 'completed', 'failed', 'refunded'],
+    default: 'pending'
   },
   transactionId: { type: String },
-  
-  status: { 
-    type: String, 
+
+  status: {
+    type: String,
     default: 'pending',
     enum: ['pending', 'accepted', 'picked_up', 'in_transit', 'delivered']
   },
   trackingNumber: { type: String, unique: true },
-  
+
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
-  
+
   notes: String,
-  
-  // Driver information
-  driver: { 
-    type: mongoose.Schema.Types.ObjectId, 
-    ref: 'Driver' 
+
+  driver: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Driver'
   },
-  
-  // Delivery boy location tracking (GeoJSON format)
+
   deliveryBoyLocation: {
     type: {
       type: String,
@@ -71,17 +69,18 @@ const orderSchema = new mongoose.Schema({
       default: 'Point'
     },
     coordinates: {
-      type: [Number], // [longitude, latitude]
+      type: [Number],
       default: [0, 0]
     },
     address: String,
     updatedAt: { type: Date, default: Date.now }
   },
-  
-  // Estimated time of arrival
+
+  deliveryNotes: { type: String, default: '' },
+  deliveryProofImage: { type: String, default: '' },
+
   eta: { type: String },
-  
-  // Driver details for quick access
+
   driverDetails: {
     name: String,
     phone: String,
@@ -90,7 +89,6 @@ const orderSchema = new mongoose.Schema({
 
 });
 
-// Create geospatial index for delivery boy location
 orderSchema.index({ deliveryBoyLocation: '2dsphere' });
 
 orderSchema.pre('save', async function (next) {
@@ -98,7 +96,7 @@ orderSchema.pre('save', async function (next) {
 
   try {
     const lastOrder = await this.constructor.findOne({ trackingNumber: { $regex: /^AE\d{3,}$/ } })
-      .sort({ trackingNumber: -1 }) 
+      .sort({ trackingNumber: -1 })
       .lean();
 
     let lastNumber = 0;
@@ -116,8 +114,7 @@ orderSchema.pre('save', async function (next) {
   }
 });
 
-// Update the updatedAt field before saving
-orderSchema.pre('save', function(next) {
+orderSchema.pre('save', function (next) {
   this.updatedAt = Date.now();
   next();
 });

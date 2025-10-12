@@ -23,6 +23,13 @@ router.post('/orders/accept',verifyDriverToken, driverController.acceptOrder);
 router.get('/orders/ongoing', verifyDriverToken, driverController.getOngoingOrders);
 router.post('/orders/deliver',verifyDriverToken, driverController.markAsDelivered);
 router.get('/orders/current', driverController.getCurrentOrders);
+router.post(
+  '/orders/delivery-proof',
+  verifyDriverToken,
+  upload.single('deliveryProofImage'),
+  driverController.saveDeliveryProof
+);
+
 // earnings and transactions
 router.get('/earnings', verifyDriverToken, getTotalEarnings);
 router.get('/transactions', verifyDriverToken, driverController.getTransactionHistory);
