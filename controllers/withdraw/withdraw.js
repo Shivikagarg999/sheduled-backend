@@ -2,7 +2,6 @@ const Withdrawal = require('../../models/withdraw');
 const Transaction = require('../../models/transactions');
 const Driver = require('../../models/driver');
 
-// Update driver's bank details
 exports.updateBankDetails = async (req, res) => {
   try {
     const driverId = req.driver.id;
@@ -276,7 +275,6 @@ exports.updateWithdrawalStatus = async (req, res) => {
   try {
     const { id } = req.params;
     const { status, notes } = req.body;
-    const adminId = req.user.id; 
 
     const withdrawal = await Withdrawal.findById(id)
       .populate('driver')
@@ -290,19 +288,19 @@ exports.updateWithdrawalStatus = async (req, res) => {
     if (withdrawal.status === 'pending' && status === 'approved') {
       // Check if driver still has sufficient earnings
       const driver = await Driver.findById(withdrawal.driver._id);
-      const currentEarnings = parseFloat(driver.earnings || 0);
+      // const currentEarnings = parseFloat(driver.earnings || 0);
       
-      if (currentEarnings < withdrawal.amount) {
-        return res.status(400).json({ 
-          message: 'Driver has insufficient earnings to complete this withdrawal',
-          currentEarnings,
-          withdrawalAmount: withdrawal.amount
-        });
-      }
+      // if (currentEarnings < withdrawal.amount) {
+      //   return res.status(400).json({ 
+      //     message: 'Driver has insufficient earnings to complete this withdrawal',
+      //     currentEarnings,
+      //     withdrawalAmount: withdrawal.amount
+      //   });
+      // }
 
       // Deduct from driver's earnings
-      driver.earnings = (currentEarnings - withdrawal.amount).toFixed(2);
-      await driver.save();
+      // driver.earnings = (currentEarnings - withdrawal.amount).toFixed(2);
+      // await driver.save();
 
       // Update transaction status
       if (withdrawal.transaction) {
@@ -332,7 +330,6 @@ exports.updateWithdrawalStatus = async (req, res) => {
       });
     }
 
-    withdrawal.processedBy = adminId;
     if (notes) withdrawal.notes = notes;
 
     await withdrawal.save();
@@ -380,5 +377,32 @@ exports.getWithdrawalInfo = async (req, res) => {
   } catch (error) {
     console.error('Error fetching withdrawal info:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+exports.getApprovedWithdrawals = async (req, res) => {
+  try {
+    // Pagination
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const totalApproved = await Withdrawal.countDocuments({ status: "approved" });
+
+    const withdrawals = await Withdrawal.find({ status: "approved" })
+      .populate("driver") 
+      .sort({ createdAt: -1 }) 
+      .skip(skip)
+      .limit(limit);
+
+    res.status(200).json({
+      withdrawals,
+      totalApproved,
+      totalPages: Math.ceil(totalApproved / limit),
+      currentPage: page,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error", error: err.message });
   }
 };

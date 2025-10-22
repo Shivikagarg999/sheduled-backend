@@ -14,8 +14,8 @@ router.get('/history', auth, withdrawalController.getWithdrawalHistory);
 router.get('/info', auth, withdrawalController.getWithdrawalInfo);
 router.get('/:id', auth, withdrawalController.getWithdrawalById);
 
-
 // Admin routes
+router.get('/admin/withdrawals/approved', withdrawalController.getApprovedWithdrawals);
 router.get('/admin/withdrawals', withdrawalController.getAllWithdrawals);
 router.get('/admin/withdrawals/:id', withdrawalController.getWithdrawalDetails);
 router.patch('/admin/withdrawals/:id/status', withdrawalController.updateWithdrawalStatus);

@@ -6,6 +6,20 @@ const http = require('http');
 const app = express();
 const { Server } = require("socket.io");
 const Order = require("./models/order");
+// ------------------- Routes -------------------
+const orderRoutes = require('./routes/orderRoutes');
+const paymentRoutes = require('./routes/paymentRoutes');
+const userRoutes = require('./routes/userRoutes');
+const driverRoutes = require('./routes/driverRoutes');
+const supportRoutes = require('./routes/supportQueryRoutes');
+const withdrawRoutes = require('./routes/withdrawRoutes');
+
+const adminAuthRoutes = require('./routes/admin/auth');
+const adminUserRoutes = require('./routes/admin/user');
+const adminOrderRoutes = require('./routes/admin/order');
+const adminDriverRoutes = require('./routes/admin/driver');
+const adminDashboardRoutes= require('./routes/admin/dashboard');
+const adminPayoutRoutes = require('./routes/admin/payout');
 
 const server = http.createServer(app);
 const io = new Server(server, {
@@ -18,32 +32,28 @@ const io = new Server(server, {
 const userMap = new Map();
 const driverMap = new Map();
 
-// 🚀 Socket.io setup
 io.on("connection", (socket) => {
-  console.log("✅ User connected:", socket.id);
+  console.log("User connected:", socket.id);
 
-  // 📌 Normal user join
   socket.on("join", (data) => {
-    console.log("📩 Data received in join:", data);
+    console.log("Data received in join:", data);
     if (data?.userId) {
       userMap.set(data.userId, socket.id);
-      console.log(`📝 User ${data.userId} mapped to socket ${socket.id}`);
+      console.log(`User ${data.userId} mapped to socket ${socket.id}`);
     }
   });
 
-  // 📌 Driver join
   socket.on("driverjoin", (data) => {
-    console.log("📩 Driver joined:", data);
+    console.log("Driver joined:", data);
     if (data?.userId) {
       driverMap.set(data.userId, socket.id);
-      console.log(`📝 Driver ${data.userId} mapped to socket ${socket.id}`);
+      console.log(`Driver ${data.userId} mapped to socket ${socket.id}`);
     }
   });
 
-  // 📌 Tracking number to fetch driver details
   socket.on("tracknum", async (data) => {
     try {
-      console.log("📩 Tracking request:", data);
+      console.log("Tracking request:", data);
       const trackingNumber = data.trackingnum;
       const driverId = data.driverId;
 
@@ -60,36 +70,32 @@ io.on("connection", (socket) => {
         return;
       }
 
-      console.log("✅ Driver found:", order.driver?._id);
+      console.log("Driver found:", order.driver?._id);
       const driverSocketId = driverMap.get(order.driver?._id.toString());
 
       if (driverSocketId) {
-        console.log(`📤 Sending sendLocation event to driver ${order.driver._id}`);
+        console.log(`Sending sendLocation event to driver ${order.driver._id}`);
 
-        // Emit location request to the driver along with tracking number
         io.to(driverSocketId).emit("sendLocation", { driverId, trackingNumber });
       } else {
-        console.warn(`⚠️ Driver ${order.driver._id} not connected`);
+        console.warn(`Driver ${order.driver._id} not connected`);
         socket.emit("tracknum-response", { error: "Driver not connected" });
       }
     } catch (err) {
-      console.error("❌ Error fetching order:", err);
+      console.error("Error fetching order:", err);
       socket.emit("tracknum-response", { error: "Server error" });
     }
   });
 
- // 📌 Handle driver sending location
 socket.on("myLocation", (data) => {
-  console.log("📩 Driver's location received:", data);
+  console.log("Driver's location received:", data);
   const { driverId, trackingNumber, location } = data;
   
-  // Validate required data
   if (!driverId ||  !location) {
-    console.warn("⚠️ Invalid location data received:", data);
+    console.warn("Invalid location data received:", data);
     return;
   }
   
-  // Find users who might be tracking this order
   userMap.forEach((userSocketId, userId) => {
     console.log(` Broadcasting location to user ${userId}`);
     io.to(userSocketId).emit("driverdata", {
@@ -100,9 +106,7 @@ socket.on("myLocation", (data) => {
   });
 });
 
-  // 📌 Handle disconnects (cleanup maps)
   socket.on("disconnect", () => {
-    // Remove from userMap and driverMap on disconnect
     userMap.forEach((value, key) => {
       if (value === socket.id) {
         userMap.delete(key);
@@ -117,22 +121,10 @@ socket.on("myLocation", (data) => {
       }
     });
 
-    console.log("❌ User disconnected:", socket.id);
+    console.log("User disconnected:", socket.id);
   });
 });
 
-// ------------------- Routes & Middleware -------------------
-const orderRoutes = require('./routes/orderRoutes');
-const paymentRoutes = require('./routes/paymentRoutes');
-const userRoutes = require('./routes/userRoutes');
-const driverRoutes = require('./routes/driverRoutes');
-const supportRoutes = require('./routes/supportQueryRoutes');
-const withdrawRoutes = require('./routes/withdrawRoutes');
-
-const adminAuthRoutes = require('./routes/admin/auth');
-const adminUserRoutes = require('./routes/admin/user');
-const adminOrderRoutes = require('./routes/admin/order');
-const adminDriverRoutes = require('./routes/admin/driver');
 
 // CORS middleware
 app.use((req, res, next) => {
@@ -175,8 +167,8 @@ mongoose.connect(process.env.MONGO_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true
 })
-.then(() => console.log('✅ MongoDB connected'))
-.catch(err => console.error('❌ Connection error:', err));
+.then(() => console.log('MongoDB connected'))
+.catch(err => console.error('Connection error:', err));
 
 // Test route
 app.get('/', (req, res) => {
@@ -195,9 +187,10 @@ app.use('/api/admin', adminAuthRoutes);
 app.use('/api/admin/user', adminUserRoutes);
 app.use('/api/admin/order', adminOrderRoutes);
 app.use('/api/admin/driver', adminDriverRoutes);
+app.use('/api/admin/dashboard', adminDashboardRoutes);
+app.use('/api/admin/payout', adminPayoutRoutes);
 
-// Start server
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT} with Socket.io`);
+  console.log(`Server running on port ${PORT}`);
 });

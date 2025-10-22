@@ -21,7 +21,12 @@ const withdrawalSchema = new mongoose.Schema({
     ref: 'Transaction'
   },
   processedAt: Date,
-  notes: String
+  notes: String,
+  payout: {
+  type: mongoose.Schema.Types.ObjectId,
+  ref: 'Payout'
+}
+
 }, { timestamps: true });
 
 module.exports = mongoose.model('Withdrawal', withdrawalSchema);

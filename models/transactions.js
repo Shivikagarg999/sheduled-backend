@@ -24,12 +24,11 @@ const transactionSchema = new mongoose.Schema({
   }
 });
 
-// Middleware to set status based on amount
 transactionSchema.pre('save', function (next) {
   if (this.amount < 0) {
-    this.status = 'pending'; // Negative → pending
+    this.status = 'pending';
   } else {
-    this.status = 'completed'; // Positive → completed
+    this.status = 'completed';
   }
   next();
 });
