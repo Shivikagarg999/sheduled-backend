@@ -35,6 +35,102 @@ const driverMap = new Map();
 io.on("connection", (socket) => {
   console.log("User connected:", socket.id);
 
+    // ============================================
+  // ✅ NEW EVENTS FOR DELIVERY BOY APP
+  // ============================================
+
+  // Delivery boy registers (new event)
+  socket.on('registerDriver', (data) => {
+    const { driverId } = data;
+    
+    if (!driverId) {
+      console.log('⚠️ Driver registration failed - no driverId');
+      return;
+    }
+
+    console.log(`✅ Driver registered: ${driverId} (Socket: ${socket.id})`);
+    
+    // Add to existing driverMap
+    driverMap.set(driverId, socket.id);
+    
+    socket.join(`driver_${driverId}`);
+    
+    socket.emit('driverConnected', {
+      message: 'You are now online',
+      driverId: driverId
+    });
+  });
+
+  // Delivery boy sends location (new event)
+  socket.on('driverLocation', (data) => {
+    const { driverId, latitude, longitude, timestamp, trackingNumber } = data;
+    
+    console.log(`📍 Location from driver ${driverId}:`, {
+      lat: latitude,
+      lng: longitude,
+      tracking: trackingNumber
+    });
+
+    // ✅ Broadcast to users tracking this order
+    if (trackingNumber) {
+      io.to(`order_${trackingNumber}`).emit('delivery_location', {
+        latitude,
+        longitude,
+        driverId,
+        timestamp: timestamp || new Date().toISOString(),
+        trackingNumber
+      });
+      
+      console.log(`📤 Broadcasted to order_${trackingNumber}`);
+    }
+
+    // Also send to all users (for backward compatibility)
+    userMap.forEach((userSocketId, userId) => {
+      io.to(userSocketId).emit("driverdata", {
+        trackingNumber,
+        driverId,
+        location: { latitude, longitude },
+      });
+    });
+  });
+
+  // Order accepted event (new event)
+  socket.on('orderAccepted', (data) => {
+    const { orderId, driverId, trackingNumber } = data;
+    
+    console.log(`📦 Order ${orderId} accepted by driver ${driverId}`);
+
+    // Notify users tracking this order
+    io.to(`order_${trackingNumber}`).emit('orderAccepted', {
+      message: 'Delivery boy accepted your order',
+      driverId,
+      orderId,
+      trackingNumber
+    });
+  });
+
+  // User tracks order by tracking number (new event)
+  socket.on('trackOrder', (data) => {
+    const { trackingNumber, userId } = data;
+    
+    console.log(`👤 User ${userId || 'unknown'} tracking order: ${trackingNumber}`);
+    
+    socket.join(`order_${trackingNumber}`);
+    
+    socket.emit('trackingStarted', {
+      message: 'Tracking started',
+      trackingNumber
+    });
+  });
+
+  // User stops tracking (new event)
+  socket.on('stopTracking', (data) => {
+    const { trackingNumber } = data;
+    console.log(`👤 User stopped tracking: ${trackingNumber}`);
+    socket.leave(`order_${trackingNumber}`);
+  });
+
+
   socket.on("join", (data) => {
     console.log("Data received in join:", data);
     if (data?.userId) {
