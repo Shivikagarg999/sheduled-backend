@@ -7,7 +7,6 @@ const Order= require('../models/order')
 const auth = require("../middleware/auth")
 const optionalAuth = require("../middleware/optionalAuth")
 
-// 💎AUTH
 router.post('/register', async (req, res) => {
   try {
     const { name, email, phone, password, googleId } = req.body;
@@ -73,7 +72,6 @@ router.post('/register', async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 });
-
 router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -116,7 +114,6 @@ router.post('/login', async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 });
-
 router.post('/google-login', async (req, res) => {
   try {
     const { email, googleId, name } = req.body;
@@ -169,15 +166,9 @@ const token = jwt.sign(
     res.status(500).json({ message: 'Server error' });
   }
 });
-
-// 💎PROFILE
-
-// Get
 router.get('/profile', auth, (req, res) => {
   res.json({ user: req.user });
 });
-
-// Edit user profile
 router.put('/edit-profile', auth, async (req, res) => {
   try {
     const userId = req.user.id;
@@ -216,10 +207,6 @@ router.put('/edit-profile', auth, async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 });
-
-//💎 ORDERS
-
-// All Orders for a user
 router.get('/allOrders/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
