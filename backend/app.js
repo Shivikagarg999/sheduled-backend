@@ -8,6 +8,7 @@ const { Server } = require("socket.io");
 const Order = require("./models/order");
 const orderRoutes = require('./routes/orderRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
+const proposalRoutes = require('./routes/proposalRoutes');
 const userRoutes = require('./routes/userRoutes');
 const driverRoutes = require('./routes/driverRoutes');
 const supportRoutes = require('./routes/supportQueryRoutes');
@@ -133,9 +134,6 @@ io.on("connection", (socket) => {
   });
 });
 
-// REMOVE the manual CORS middleware and use only the cors package
-// Replace both CORS configurations with this single one:
-
 app.use(cors({
   origin: function (origin, callback) {
     const allowedOrigins = [
@@ -147,7 +145,6 @@ app.use(cors({
       "https://admin.sheduled.com"
     ];
     
-    // Allow requests with no origin (like mobile apps, Postman, etc.)
     if (!origin) return callback(null, true);
     
     if (allowedOrigins.includes(origin)) {
@@ -162,7 +159,6 @@ app.use(cors({
   allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"]
 }));
 
-// Handle preflight requests
 app.options('*', cors());
 
 app.use(express.json());
@@ -184,6 +180,7 @@ app.use('/api/user', userRoutes);
 app.use('/api/driver', driverRoutes);
 app.use('/api/support', supportRoutes);
 app.use('/api/withdraw', withdrawRoutes);
+app.use('/api/proposal', proposalRoutes);
 app.use('/api/admin', adminAuthRoutes);
 app.use('/api/admin/user', adminUserRoutes);
 app.use('/api/admin/order', adminOrderRoutes);
