@@ -171,7 +171,7 @@ mongoose.connect(process.env.MONGO_URI, {
 .catch(err => console.error('Connection error:', err));
 
 app.get('/', (req, res) => {
-  res.send('App is running');
+  res.send('Backend is running');
 });
 
 app.use('/api/orders', orderRoutes);
